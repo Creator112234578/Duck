@@ -1,31 +1,21 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Shooting : MonoBehaviour
 {
     public GameObject DuckInHand;
     public Transform Cam;
-
-
     public float dashCd;
     public bool readyToThrow;
-
-
     Ray ray1;
     RaycastHit hited;
-    
     float maxDist = 1000;
     public LayerMask layer;
-
     public GameObject Object;
     public GameObject KaboomObject;
-
     private void Start()
     {
          DuckInHand.SetActive(true);
     }
-    // Update is called once per frame
     private void Update()
     {
         ray1 = new Ray(transform.position, transform.forward);

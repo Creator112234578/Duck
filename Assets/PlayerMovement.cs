@@ -1,286 +1,242 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement")]
-    private float speed;
-    public float walkSpeed;
-    public float runSpeed;
-    public bool dashInTheAir;
-    public float dashes;
-    public float dashSpeed;
+    private float currentSpeed;
+    public float WalkSpeed;
+    public float CurrentSpeed
+    {
+        get
+        {
+            return currentSpeed;
+        }
+    }
+    public float Drag;
+    public MovementState state;
+    private Vector3 Direction;
+    [Header("Running")]
+    public bool CanRun;
+    public float RunSpeed;
+    [Header("Dashing")]
+    public bool CanDash;
+    public float DashCnt;
+    public float DashSpeed;
     public float DashForce;
     public float DashUpwardForce;
     public float DashDuration;
-    public float dashCd;
-    public float dashCdGlobal;
-    public float dashCdTimerGlobal;
-    private float dashCdTimer;
-    
-    public float maxSlopeAngle;
+    public float DashCooldownGlobal;
+    public float DashCooldownTimerGlobal;
+    public float DashCooldown;
+    private float DashCooldownTimer;
+    [HideInInspector]
+    public bool IsDashing;
+    [Header("Slopes")]
+    public float MaxSlopeAngle;
     private RaycastHit slopeHit;
-
-    public float speedHere;
-    
-
-    public float Drag;
-
-    public bool readyToJump;
-    public float jumpForce;
-
+    private float slopeAngle;
+    [Header("Jumping")]
+    public bool CanJump;
+    public float JumpingForce;
     [Header("Crouching")]
-    public float crouchSpeed;
-    public float crouchYscale;
-    public float startYscale;
+    public bool CanCrouch;
+    public float CrouchSpeed;
+    public float CrouchYscale;
+    public float DefaultYscale;
     [Header("KeyBinds")]
-    public KeyCode jumpButton;
-    public KeyCode runButton;
+    public KeyCode JumpKey;
+    public KeyCode RunKey;
+    public KeyCode CrouchKey;
+    public KeyCode DashKey;
     [Header("Ground Check")]
-    public float playerHeight;
+    public float PlayerHeight;
     public LayerMask GroundUNow;
-    bool grounded;
-    public bool crouching;
+    private bool onGround;
 
-
+    [Header("Misc")]
     public Transform orientation;
     public Transform PlayerCam;
     public Transform Player;
-    float HInput;
-    float VInput;
-    Vector3 Direction;
- 
-    Rigidbody rb;
-    public MovementState state;
+
+    private float hInput;
+    private float vInput;
+    private Rigidbody rb;
     public enum MovementState
     {
-	walking,
-	running,
-	crouching,
+        walking,
+        running,
+        crouching,
         dashing,
-	air
-    
-    }  
-    
-    public bool dashing;
-
-
+        air
+    }
 
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
-	speed = walkSpeed;
-	readyToJump = true;
-        dashCdTimerGlobal = dashCdGlobal;
+        currentSpeed = WalkSpeed;
+        CanJump = true;
+        DashCooldownTimerGlobal = DashCooldownGlobal;
     }
-
-    // Update is called once per frame
     private void Update()
     {
-	Debug.DrawRay(transform.position, Vector3.up, Color.green, playerHeight * 0.5f + 1.2f);
-        grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 1.2f, GroundUNow);
-	crouching = Physics.Raycast(transform.position, Vector3.up, playerHeight * 0.5f + 0.2f, GroundUNow);
-        MyInput();
-        SpeedControl();
-	StateHandler();
-	speedHere = speed;
+        Debug.DrawRay(transform.position, Vector3.up, Color.green, PlayerHeight * 0.5f + 1.2f);
+        onGround = Physics.Raycast(transform.position, Vector3.down, out slopeHit, PlayerHeight * 0.5f + 1.2f, GroundUNow);
 
-        rb.useGravity = !OnSlope();
-	OnSlope();
-        
-
-        
-        if (dashCdTimer > 0)
+        // Slope check
+        slopeAngle = 0;
+        if (onGround)
         {
-            dashCdTimer -= Time.deltaTime;
+            slopeAngle = Vector3.Angle(Direction, slopeHit.normal);
         }
-        
-        if (dashes > 0)
+        if (slopeAngle >= MaxSlopeAngle)
         {
-            dashInTheAir = true;
-            if (Input.GetKeyDown(KeyCode.E))
+            slopeAngle = 0;
+        }
+        // Speed control
+        Vector3 flatVel = new(rb.velocity.x, 0f, rb.velocity.z);
+        if (flatVel.magnitude > currentSpeed)
+        {
+            Vector3 limitedVel = flatVel.normalized * currentSpeed;
+            rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
+        }
+        Debug.Log($"{(onGround ? "" : "not")} on the ground, can{(CanRun ? "" : "t")} run, can{(CanJump ? "" : "t")} jump, can{(CanDash ? "" : "t")} dash");
+        StateHandler();
+        rb.useGravity = slopeAngle == 0;
+        if (DashCooldownTimer > 0)
+        {
+            DashCooldownTimer -= Time.deltaTime;
+        }
+        if (DashCnt > 0)
+        {
+            CanDash = true;
+            if (Input.GetKeyDown(DashKey))
             {
                 Dash();
             }
         }
-
-        if (dashes == 0)
+        if (DashCnt == 0)
         {
-            dashInTheAir = false;
-            dashing = false;
-            dashCdTimerGlobal -= Time.deltaTime;
+            CanDash = false;
+            IsDashing = false;
+            DashCooldownTimerGlobal -= Time.deltaTime;
         }
-        if (dashCdTimerGlobal <= 0)
+        if (DashCooldownTimerGlobal <= 0)
         {
-            dashes = 3;
-            dashCdTimerGlobal = dashCdGlobal;
+            DashCnt = 3;
+            DashCooldownTimerGlobal = DashCooldownGlobal;
         }
-
     }
     private void StateHandler()
     {
-
-        if (Input.GetKeyDown(KeyCode.Space) && readyToJump && grounded)
+        if (onGround && CanJump && Input.GetKeyDown(JumpKey))
         {
-            readyToJump = false;
-
+            CanJump = false;
             Jump();
-
-            Invoke(nameof(ReadyToJump), 0.02f);
+            Invoke(nameof(ResetJump), 0.02f);
         }
-
-        if (dashing && dashInTheAir)
+        else if (onGround && CanRun && Input.GetKey(RunKey))
         {
             rb.drag = Drag;
-            state = MovementState.dashing;
-            speed = dashSpeed;
-            
+            currentSpeed = RunSpeed;
+            state = MovementState.running;
         }
-	else if (grounded && Input.GetKey(KeyCode.LeftShift))
-	{
-	   state = MovementState.running;
-	   speed = runSpeed;
-	   rb.drag = 0.5f;
-	}
-	else if (grounded)
-	{
-	   state = MovementState.walking;
-	   speed = walkSpeed;
-	   rb.drag = Drag;
-	}
-	else
-	{
-	   state = MovementState.air;
-	   rb.drag = 0f;
-	}
-        
-	
-	
+        else if (onGround && CanCrouch && Input.GetKey(CrouchKey))
+        {
+            rb.drag = Drag;
+            currentSpeed = CrouchSpeed;
+            state = MovementState.crouching;
+        }
+        else if (onGround)
+        {
+            rb.drag = Drag;
+            currentSpeed = WalkSpeed;
+            state = MovementState.walking;
+        }
+        else if (IsDashing && CanDash)
+        {
+            rb.drag = Drag;
+            currentSpeed = DashSpeed;
+            state = MovementState.dashing;
+        }
+        else
+        {
+            state = MovementState.air;
+            rb.drag = 0f;
+        }
     }
     private void Jump()
     {
-	rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);	   
-        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        rb.AddForce(transform.up * JumpingForce, ForceMode.Impulse);
     }
-    private void ReadyToJump()
+    private void ResetJump()
     {
-	readyToJump = true;
+        CanJump = true;
     }
-    private void OnTriggerEnter()
-    {
-
-    }
-
     private void FixedUpdate()
     {
-        Movement();
-    }
-
-    private void MyInput()
-    {
-        HInput = Input.GetAxisRaw("Horizontal");
-        VInput = Input.GetAxisRaw("Vertical");
-
-    }
-
-    private void Movement()
-    {
-        Direction = orientation.forward * VInput + orientation.right * HInput;
-        if (grounded)
+        hInput = Input.GetAxisRaw("Horizontal");
+        vInput = Input.GetAxisRaw("Vertical");
+        Direction = orientation.forward * vInput + orientation.right * hInput;
+        if (onGround)
         {
-            rb.AddForce(Direction.normalized * speed * 15f, ForceMode.Force);
+            rb.AddForce(15f * currentSpeed * Direction.normalized, ForceMode.Force);
         }
-	else if (!grounded)
-	{
-	    rb.AddForce(Direction.normalized * speed * 15f * 1, ForceMode.Force);
-	}
-        if (OnSlope())
+        else if (!onGround)
         {
-            rb.AddForce(GetSlopeMoveDirection() * speed * 15f, ForceMode.Force);
+            rb.AddForce(1 * 15f * currentSpeed * Direction.normalized, ForceMode.Force);
+        }
+        if (slopeAngle != 0)
+        {
+            rb.AddForce(15f * currentSpeed * GetSlopeMoveDirection(), ForceMode.Force);
 
             if (rb.velocity.y > 0)
             {
                 rb.AddForce(Vector3.down * 80f, ForceMode.Force);
             }
         }
-	
-
     }
-
-    private void SpeedControl()
-    {
-        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-        if (flatVel.magnitude > speed)
-        {
-            Vector3 limitedVel = flatVel.normalized * speed;
-            rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
-        }
-    }
-
-    private bool OnSlope()
-    {
-	if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 1.2f, GroundUNow))
-	{
-             float angle = Vector3.Angle(Direction, slopeHit.normal);
-             return angle < maxSlopeAngle && angle != 0;
-	}
-
-        return false;
-    }
-
     private Vector3 GetSlopeMoveDirection()
     {
-         return Vector3.ProjectOnPlane(Direction, slopeHit.normal).normalized;
+        return Vector3.ProjectOnPlane(Direction, slopeHit.normal).normalized;
     }
-
-
     private void Dash()
     {
-         
-         if (dashCdTimer > 0) return;
-         else dashCdTimer = dashCd;
-
-         dashing = true;
-         dashes -= 1;
-         Vector3 dashDirectionInTheAir = PlayerCam.forward * VInput + PlayerCam.right * HInput;
-         Vector3 dashDirectionOnTheGround = orientation.forward * VInput + orientation.right * HInput;
-         Vector3 forceToApply = dashDirectionInTheAir.normalized * DashForce + orientation.up * DashUpwardForce;
-         Vector3 forceToApplyDirection = PlayerCam.forward * DashForce + orientation.up * DashUpwardForce;
-         if (HInput == 0 && VInput == 0)
-         {
-             delayedForceToApply = forceToApplyDirection;
-         }
-         else
-         {
-             delayedForceToApply = forceToApply;
-         }
-
-         
-         delayedForceToApplyDirection = dashDirectionInTheAir;
-
-         Invoke(nameof(DelayedDashInPlaceForce), 0.025f);
-         Invoke(nameof(ResetDash), DashDuration);
+        if (DashCooldownTimer > 0)
+        {
+            return;
+        }
+        else
+        {
+            DashCooldownTimer = DashCooldown;
+        }
+        IsDashing = true;
+        DashCnt -= 1;
+        Vector3 dashDirectionInTheAir = PlayerCam.forward * vInput + PlayerCam.right * hInput;
+        Vector3 dashDirectionOnTheGround = orientation.forward * vInput + orientation.right * hInput;
+        Vector3 forceToApply = dashDirectionInTheAir.normalized * DashForce + orientation.up * DashUpwardForce;
+        Vector3 forceToApplyDirection = PlayerCam.forward * DashForce + orientation.up * DashUpwardForce;
+        if (hInput == 0 && vInput == 0)
+        {
+            delayedForceToApply = forceToApplyDirection;
+        }
+        else
+        {
+            delayedForceToApply = forceToApply;
+        }
+        delayedForceToApplyDirection = dashDirectionInTheAir;
+        Invoke(nameof(DelayedDashInPlaceForce), 0.025f);
+        Invoke(nameof(ResetDash), DashDuration);
     }
-
     private Vector3 delayedForceToApply;
-    private Vector3 delayedForceToApplyDirection;	
-
+    private Vector3 delayedForceToApplyDirection;
     private void DelayedDashInPlaceForce()
     {
-         rb.AddForce(delayedForceToApply, ForceMode.Impulse);
+        rb.AddForce(delayedForceToApply, ForceMode.Impulse);
     }
-    private void DelayedDashForce()
-    {
-         rb.AddForce(delayedForceToApplyDirection, ForceMode.Impulse);
-    }
-
-
-
     private void ResetDash()
     {
-         dashing = false;
+        IsDashing = false;
     }
-
 }

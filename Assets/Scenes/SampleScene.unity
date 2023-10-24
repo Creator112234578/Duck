@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028352, g: 0.22571376, b: 0.30692244, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -564,12 +564,6 @@ MonoBehaviour:
   sensY: 1000
   orientation: {fileID: 391831215}
   YRotation: 0
-  GroundUNow:
-    serializedVersion: 2
-    m_Bits: 64
-  grounded: 0
-  Item: {fileID: 0}
-  Player: {fileID: 0}
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1019,7 +1013,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1046361015}
   m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
-  m_LocalPosition: {x: 70.2, y: 18.099993, z: 27.725832}
+  m_LocalPosition: {x: 72.6, y: 18.099993, z: 27.725832}
   m_LocalScale: {x: 171, y: 1, z: 189}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1359,37 +1353,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55da4bd9d894f47469185abafcf07e49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walkSpeed: 20
-  runSpeed: 45
-  dashInTheAir: 0
-  dashes: 3
-  dashSpeed: 45
+  WalkSpeed: 20
+  Drag: 1
+  state: 0
+  CanRun: 1
+  RunSpeed: 45
+  CanDash: 0
+  DashCnt: 3
+  DashSpeed: 45
   DashForce: 750
   DashUpwardForce: 0
   DashDuration: 1.5
-  dashCd: 0.12
-  dashCdGlobal: 1.5
-  dashCdTimerGlobal: 0.5
-  maxSlopeAngle: 0
-  speedHere: 0
-  Drag: 5
-  readyToJump: 0
-  jumpForce: 75
-  crouchSpeed: 0
-  crouchYscale: 0
-  startYscale: 0
-  jumpButton: 32
-  runButton: 304
-  playerHeight: 2
+  DashCooldownGlobal: 1.5
+  DashCooldownTimerGlobal: 0.5
+  DashCooldown: 0.12
+  IsDashing: 0
+  MaxSlopeAngle: 0.2
+  CanJump: 1
+  JumpingForce: 150
+  CanCrouch: 1
+  CrouchSpeed: 15
+  CrouchYscale: 0.7
+  DefaultYscale: 1
+  JumpKey: 32
+  RunKey: 306
+  CrouchKey: 304
+  DashKey: 101
+  PlayerHeight: 2
   GroundUNow:
     serializedVersion: 2
     m_Bits: 64
-  crouching: 0
   orientation: {fileID: 391831215}
   PlayerCam: {fileID: 330585546}
   Player: {fileID: 1848696660}
-  state: 0
-  dashing: 0
 --- !u!136 &1848696663
 CapsuleCollider:
   m_ObjectHideFlags: 0

@@ -116,7 +116,7 @@ Transform:
   m_Children:
   - {fileID: 6382876286280442985}
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!54 &-3923048359138784404
 Rigidbody:
@@ -178,7 +178,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10e255f6ca1d7894dbe092d4a1e00f3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rigidbody: {fileID: -3923048359138784404}
+  RigidBody: {fileID: -3923048359138784404}
   SC: {fileID: 8377664857325133836}
   Bullet: 1.5
   Mass: 5
